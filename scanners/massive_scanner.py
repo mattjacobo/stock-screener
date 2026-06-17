@@ -3,48 +3,40 @@ import pandas as pd
 
 API_KEY = "TBCRWM_hMNd85ETjqZCz83LFNZGWpJpU"
 
-def get_live_gainers(min_change=1.0, min_volume=20000, limit=50):
+def get_live_gainers(min_change=0.5, min_volume=10000, limit=50):
     try:
         client = RESTClient(API_KEY)
-        gainers = client.get_gainers_and_losers(
-            market="stocks",
-            direction="gainers",
-            include_pre_post_market=True
-        )
-
+        
+        # Correct method for gainers
+        gainers = client.get_snapshot_direction('stocks', direction='gainers')
+        
         print(f"Raw gainers returned: {len(gainers)}")
 
         data = []
-        for item in gainers[:100]:  # Limit to first 100 for speed
-            day = getattr(item, 'day', None)
-            if not day or not getattr(day, 'c', None):
+        for item in gainers:
+            ticker = getattr(item, 'ticker', None) or getattr(item, 'T', None)
+            if not ticker:
                 continue
 
-            ticker = item.ticker
-            price = day.c
-            volume = getattr(day, 'v', 0) or 0
+            day = getattr(item, 'day', None) or item
+            price = getattr(day, 'c', None) or getattr(day, 'last_price', None) or getattr(item, 'last', None)
+            volume = getattr(day, 'v', None) or getattr(day, 'volume', 0) or 0
 
-            change_pct = getattr(item, 'todays_change_percent', None)
+            change_pct = getattr(item, 'todays_change_percent', None) or getattr(item, 'change_percent', None)
             if change_pct is None or change_pct == 0:
-                abs_change = getattr(item, 'todays_change', None)
-                if abs_change is not None and price > 0:
-                    prev = price - abs_change
-                    if prev > 0:
-                        change_pct = (abs_change / prev) * 100
+                change_pct = getattr(item, 'change', None)
+                if change_pct and price:
+                    change_pct = change_pct / (price - change_pct) * 100 if (price - change_pct) > 0 else 0
 
-            if change_pct is None or change_pct == 0:
-                open_p = getattr(day, 'o', None)
-                if open_p and open_p > 0:
-                    change_pct = ((price - open_p) / open_p) * 100
-                else:
-                    change_pct = 0
+            if change_pct is None:
+                change_pct = 0
 
-            if change_pct >= min_change and volume >= min_volume and price >= 1.0:
+            if change_pct >= min_change and volume >= min_volume and price and price >= 1.0:
                 data.append({
                     "Ticker": ticker,
                     "Price": round(price, 2),
                     "% Change": round(change_pct, 2),
-                    "Volume": f"{volume:,}",
+                    "Volume": f"{int(volume):,}",
                     "RVOL": "High",
                     "Score": round(change_pct * 1.5, 1)
                 })
