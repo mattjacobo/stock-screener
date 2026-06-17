@@ -12,6 +12,12 @@ st.set_page_config(page_title="Stock Screener", layout="wide")
 st.title("🚀 Stock Screener - Momentum Play Detector")
 st.caption("Multi-Source Scanner + Interactive Charts")
 
+# Session state
+if 'selected_ticker' not in st.session_state:
+    st.session_state.selected_ticker = None
+if 'chart_timeframe' not in st.session_state:
+    st.session_state.chart_timeframe = "1d"
+
 # =============================================
 # SIDEBAR
 # =============================================
@@ -36,10 +42,6 @@ with st.sidebar:
 # =============================================
 col_table, col_details = st.columns([3.5, 2.2])
 
-# Session state for selected ticker
-if 'selected_ticker' not in st.session_state:
-    st.session_state.selected_ticker = None
-
 with col_table:
     st.subheader("📊 Live Momentum Scanner")
     
@@ -55,13 +57,18 @@ with col_table:
                 df_display["Price"] = df_display["Price"].apply(lambda x: f"${x:.3f}")
                 df_display["% Change"] = df_display["% Change"].apply(lambda x: f"+{x:.2f}%")
                 
-                # Make table clickable
-                st.dataframe(df_display, use_container_width=True, hide_index=True, height=650,
-                             on_select="rerun", selection_mode="single-row")
+                # Clickable table
+                event = st.dataframe(
+                    df_display, 
+                    use_container_width=True, 
+                    hide_index=True, 
+                    height=650,
+                    on_select="rerun",
+                    selection_mode="single-row"
+                )
                 
-                # Get selected row
-                if st.session_state.get("dataframe_selection") and len(st.session_state.dataframe_selection["selection"]["rows"]) > 0:
-                    selected_idx = st.session_state.dataframe_selection["selection"]["rows"][0]
+                if event and len(event.selection["rows"]) > 0:
+                    selected_idx = event.selection["rows"][0]
                     st.session_state.selected_ticker = df_display.iloc[selected_idx]["Ticker"]
             else:
                 st.warning("No plays found. Try lowering filters.")
@@ -69,17 +76,24 @@ with col_table:
 with col_details:
     st.subheader("Selected Ticker Analysis")
     
-    # Use session state or manual input
     display_ticker = st.text_input("Ticker Symbol", value=st.session_state.selected_ticker or "").upper().strip()
     
+    # Timeframe buttons
     if display_ticker:
-        st.success(f"📈 Analyzing **{display_ticker}**")
+        st.write("**Timeframe**")
+        cols = st.columns(6)
+        timeframes = ["1m", "5m", "15m", "1h", "4h", "1d"]
+        for i, tf in enumerate(timeframes):
+            if cols[i].button(tf, use_container_width=True):
+                st.session_state.chart_timeframe = tf
+
+    if display_ticker:
+        st.success(f"📈 **{display_ticker}** - {st.session_state.chart_timeframe.upper()}")
         
-        # Fetch real chart data
         with st.spinner("Loading chart..."):
             try:
                 stock = yf.Ticker(display_ticker)
-                hist = stock.history(period="6mo")
+                hist = stock.history(period="60d", interval=st.session_state.chart_timeframe)
                 
                 if not hist.empty:
                     fig = go.Figure(data=[go.Candlestick(
@@ -92,19 +106,16 @@ with col_details:
                     )])
                     
                     fig.update_layout(
-                        title=f"{display_ticker} - Daily Chart with Potential Zones",
+                        title=f"{display_ticker} - {st.session_state.chart_timeframe.upper()} Chart",
                         height=550,
                         template="plotly_dark",
                         xaxis_rangeslider_visible=False
                     )
                     st.plotly_chart(fig, use_container_width=True)
-                    
-                    st.write("**Supply / Demand Zones** (placeholder logic - coming next)")
-                    st.info("Higher timeframe zones will be overlaid here in the next iteration.")
                 else:
-                    st.error("No data available for this ticker.")
-            except:
-                st.error("Could not load chart data.")
+                    st.error("No data for this timeframe.")
+            except Exception as e:
+                st.error(f"Could not load chart: {e}")
 
 st.divider()
-st.info("💡 Click any row in the scanner table to load its chart automatically.")
+st.info("💡 Click any row in the scanner table to auto-load its chart.")
