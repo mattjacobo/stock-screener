@@ -35,27 +35,28 @@ with st.sidebar:
 col_table, col_details = st.columns([3.5, 2.2])
 
 # =============================================
-# LEFT COLUMN - LIVE SCANNER TABLE
+# LIVE SCANNER TABLE
 # =============================================
 with col_table:
     st.subheader("📊 Live Momentum Scanner")
     st.caption("Automatically finds plays matching your filters")
 
     if st.button("🔄 Run Live Scan", type="primary", use_container_width=True):
-        with st.spinner("Scanning market with Massive.io..."):
+        with st.spinner("Scanning entire market with Massive.io..."):
             df = get_live_gainers(min_change=gap_min, min_volume=min_volume)
 
             if not df.empty:
-                # Format Price column with $ and limit decimals
+                # Format columns nicely
                 df_display = df.copy()
                 df_display["Price"] = df_display["Price"].apply(lambda x: f"${x:.3f}")
+                df_display["% Change"] = df_display["% Change"].apply(lambda x: f"+{x:.2f}%")
 
-                # Color coding for % Change
+                # Color coding
                 def highlight_change(row):
                     styles = [''] * len(row)
                     try:
                         idx = row.index.get_loc('% Change')
-                        if row['% Change'] > 0:
+                        if float(row['% Change'].strip('%+')) > 0:
                             styles[idx] = 'background-color: #0e4a2e; color: white'
                     except:
                         pass
@@ -74,14 +75,14 @@ with col_table:
                 st.warning("No plays found. Try lowering Gap Min % or Min Volume.")
 
 # =============================================
-# RIGHT COLUMN - SELECTED TICKER
+# RIGHT PANEL
 # =============================================
 with col_details:
     st.subheader("Selected Ticker Analysis")
     ticker = st.text_input("Ticker (click row above or type)", value="").upper().strip()
     
     if st.button("Load Chart + Zones", use_container_width=True) and ticker:
-        st.info(f"📈 Loading full analysis for **{ticker}**...")
+        st.info(f"📈 Loading analysis for **{ticker}**...")
         fig = go.Figure()
         fig.update_layout(
             title=f"{ticker} - Daily Chart with Supply/Demand Zones",
@@ -91,10 +92,10 @@ with col_details:
         st.plotly_chart(fig, use_container_width=True)
 
 # =============================================
-# BOTTOM - ALERTS
+# BOTTOM ALERTS
 # =============================================
 st.divider()
 st.subheader("🛎️ Alerts & Log")
-st.info("Run scans above to generate opportunities and alerts.")
+st.info("Run scans to generate opportunities.")
 
-st.caption("💡 Next steps: Clickable table rows, real-time auto-refresh, Supply/Demand zones overlay")
+st.caption("💡 Next: Clickable rows, real-time auto-refresh, Supply/Demand zones")
