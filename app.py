@@ -3,12 +3,17 @@ import pandas as pd
 from scanners.massive_scanner import get_live_gainers
 import plotly.graph_objects as go
 
+# =============================================
+# CONFIG & PAGE SETUP
+# =============================================
 st.set_page_config(page_title="Stock Screener", layout="wide", initial_sidebar_state="expanded")
 
 st.title("🚀 Stock Screener - Momentum Play Detector")
 st.caption("Real-time Massive.io | Auto Discovery | Sykes/Touhey Style")
 
-# Sidebar Filters
+# =============================================
+# SIDEBAR - FILTERS
+# =============================================
 with st.sidebar:
     st.header("🔍 Strategy Filters")
     
@@ -20,9 +25,18 @@ with st.sidebar:
     account_size = st.number_input("Account Size ($)", value=1000)
     risk_percent = st.slider("Risk % per Trade", 1.0, 10.0, 5.0)
 
-# Main Area
+    st.divider()
+    if st.button("💾 Save Current Filters", use_container_width=True):
+        st.success("Filters saved (demo)")
+
+# =============================================
+# MAIN LAYOUT
+# =============================================
 col_table, col_details = st.columns([3.5, 2.2])
 
+# =============================================
+# LEFT COLUMN - LIVE SCANNER TABLE
+# =============================================
 with col_table:
     st.subheader("📊 Live Momentum Scanner")
     st.caption("Automatically finds plays matching your filters")
@@ -32,7 +46,11 @@ with col_table:
             df = get_live_gainers(min_change=gap_min, min_volume=min_volume)
 
             if not df.empty:
-                # Fixed styling
+                # Format Price column with $ and limit decimals
+                df_display = df.copy()
+                df_display["Price"] = df_display["Price"].apply(lambda x: f"${x:.3f}")
+
+                # Color coding for % Change
                 def highlight_change(row):
                     styles = [''] * len(row)
                     try:
@@ -43,7 +61,7 @@ with col_table:
                         pass
                     return styles
                 
-                styled_df = df.style.apply(highlight_change, axis=1)
+                styled_df = df_display.style.apply(highlight_change, axis=1)
                 
                 st.dataframe(
                     styled_df,
@@ -55,19 +73,28 @@ with col_table:
             else:
                 st.warning("No plays found. Try lowering Gap Min % or Min Volume.")
 
+# =============================================
+# RIGHT COLUMN - SELECTED TICKER
+# =============================================
 with col_details:
     st.subheader("Selected Ticker Analysis")
-    ticker = st.text_input("Ticker (or click row above)", value="").upper().strip()
+    ticker = st.text_input("Ticker (click row above or type)", value="").upper().strip()
     
     if st.button("Load Chart + Zones", use_container_width=True) and ticker:
-        st.info(f"📈 Loading analysis for **{ticker}**...")
+        st.info(f"📈 Loading full analysis for **{ticker}**...")
         fig = go.Figure()
-        fig.update_layout(title=f"{ticker} - Daily Chart with Supply/Demand Zones", height=480, template="plotly_dark")
+        fig.update_layout(
+            title=f"{ticker} - Daily Chart with Supply/Demand Zones",
+            height=480,
+            template="plotly_dark"
+        )
         st.plotly_chart(fig, use_container_width=True)
 
-# Bottom
+# =============================================
+# BOTTOM - ALERTS
+# =============================================
 st.divider()
 st.subheader("🛎️ Alerts & Log")
-st.info("Run scans to generate opportunities.")
+st.info("Run scans above to generate opportunities and alerts.")
 
-st.caption("💡 Next: Real-time auto-refresh + clickable rows")
+st.caption("💡 Next steps: Clickable table rows, real-time auto-refresh, Supply/Demand zones overlay")
