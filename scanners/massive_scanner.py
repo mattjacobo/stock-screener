@@ -3,38 +3,26 @@ import pandas as pd
 
 API_KEY = "TBCRWM_hMNd85ETjqZCz83LFNZGWpJpU"
 
-def get_live_gainers(min_change=0.5, min_volume=10000, limit=30):
-    """
-    Pure live scanner with heavy debug output.
-    """
+def get_live_gainers(min_change=0.5, min_volume=10000, limit=50):
+    """Returns data + debug info for visibility in the app."""
+    debug_info = []
     try:
         client = RESTClient(API_KEY)
-        print("[DEBUG] Client created successfully")
+        debug_info.append("✅ Client initialized successfully")
 
-        # Try the standard gainers method
-        gainers = client.get_gainers_and_losers(
-            market="stocks", 
-            direction="gainers",
-            include_pre_post_market=True
-        )
-        
-        print(f"[DEBUG] get_gainers_and_losers returned {len(gainers)} items")
+        # Try snapshot for broader coverage
+        snapshot = client.get_snapshot_all('stocks')
+        debug_info.append(f"📡 Snapshot returned {len(snapshot)} items")
 
         data = []
-        for item in gainers:
-            ticker = getattr(item, 'ticker', None)
+        for item in snapshot[:300]:   # Process more items
+            ticker = getattr(item, 'ticker', None) or getattr(item, 'T', None)
             if not ticker:
                 continue
 
-            day = getattr(item, 'day', None)
-            if day:
-                price = getattr(day, 'c', None)
-                volume = getattr(day, 'v', 0)
-            else:
-                price = getattr(item, 'last_price', None) or getattr(item, 'c', None)
-                volume = getattr(item, 'volume', 0) or getattr(item, 'v', 0)
-
-            change_pct = getattr(item, 'todays_change_percent', None) or getattr(item, 'change_percent', None)
+            price = getattr(item, 'last_price', None) or getattr(item, 'c', None) or getattr(item, 'last', None)
+            change_pct = getattr(item, 'change_percent', None) or getattr(item, 'todays_change_percent', None)
+            volume = getattr(item, 'volume', None) or getattr(item, 'v', 0) or 0
 
             if price is None or change_pct is None:
                 continue
@@ -55,15 +43,15 @@ def get_live_gainers(min_change=0.5, min_volume=10000, limit=30):
                     "Score": round(change_pct, 1)
                 })
 
-        print(f"[DEBUG] After filtering: {len(data)} tickers passed")
-
+        debug_info.append(f"✅ After filtering: {len(data)} tickers passed filters")
+        
         if data:
             df = pd.DataFrame(data)
-            return df.sort_values("% Change", ascending=False).head(limit)
+            return df.sort_values("% Change", ascending=False).head(limit), debug_info
         else:
-            print("[DEBUG] No tickers passed filters")
-            return pd.DataFrame()
+            debug_info.append("⚠️ No tickers passed filters")
+            return pd.DataFrame(), debug_info
 
     except Exception as e:
-        print(f"[ERROR] Critical error: {str(e)}")
-        return pd.DataFrame()
+        debug_info.append(f"❌ ERROR: {str(e)}")
+        return pd.DataFrame(), debug_info
