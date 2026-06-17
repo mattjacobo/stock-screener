@@ -1,4 +1,4 @@
-from tradingview_screener import Screener
+from tradingview_screener import Query
 import pandas as pd
 
 def get_live_gainers(min_change=1.0, min_volume=10000, limit=50):
