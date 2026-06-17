@@ -3,4 +3,4 @@ pandas
 plotly
 massive
 yfinance
-finvizfinance
+finvizfinance==0.9.8
