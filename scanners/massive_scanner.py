@@ -3,7 +3,7 @@ import pandas as pd
 
 API_KEY = "TBCRWM_hMNd85ETjqZCz83LFNZGWpJpU"
 
-def get_live_gainers(min_change=2.0, min_volume=50000, limit=40):
+def get_live_gainers(min_change=1.0, min_volume=20000, limit=50):
     try:
         client = RESTClient(API_KEY)
         gainers = client.get_gainers_and_losers(
@@ -15,7 +15,7 @@ def get_live_gainers(min_change=2.0, min_volume=50000, limit=40):
         print(f"Raw gainers returned: {len(gainers)}")
 
         data = []
-        for item in gainers:
+        for item in gainers[:100]:  # Limit to first 100 for speed
             day = getattr(item, 'day', None)
             if not day or not getattr(day, 'c', None):
                 continue
@@ -39,7 +39,7 @@ def get_live_gainers(min_change=2.0, min_volume=50000, limit=40):
                 else:
                     change_pct = 0
 
-            if change_pct >= min_change and volume >= min_volume:
+            if change_pct >= min_change and volume >= min_volume and price >= 1.0:
                 data.append({
                     "Ticker": ticker,
                     "Price": round(price, 2),
@@ -49,11 +49,13 @@ def get_live_gainers(min_change=2.0, min_volume=50000, limit=40):
                     "Score": round(change_pct * 1.5, 1)
                 })
 
+        print(f"After filtering: {len(data)} tickers passed")
+
         if data:
             df = pd.DataFrame(data)
             return df.sort_values("% Change", ascending=False).head(limit)
         return pd.DataFrame()
 
     except Exception as e:
-        print(f"Massive Error: {e}")
+        print(f"Massive API Error: {e}")
         return pd.DataFrame()
