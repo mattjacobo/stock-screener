@@ -6,76 +6,66 @@ import plotly.graph_objects as go
 st.set_page_config(page_title="Stock Screener", layout="wide", initial_sidebar_state="expanded")
 
 st.title("🚀 Stock Screener - Momentum Play Detector")
-st.caption("Real-time | Massive.io | Professional Scanner")
+st.caption("Real-time Massive.io | Auto Discovery | Sykes/Touhey Style")
 
-# ==================== SIDEBAR (IBKR Style) ====================
+# Sidebar Filters (IBKR Style)
 with st.sidebar:
-    st.header("🔍 Filters")
+    st.header("🔍 Strategy Filters")
     
-    st.subheader("Price Action")
-    gap_min = st.slider("Gap % (Min)", 0.0, 30.0, 4.0)
+    gap_min = st.slider("Gap Min %", 0.0, 30.0, 4.0)
+    min_volume = st.number_input("Min Volume", value=50000, step=25000)
     min_price = st.number_input("Min Price $", value=1.0, step=0.5)
-    min_volume = st.number_input("Min Volume", value=100000, step=50000)
-    
-    st.subheader("Universe")
-    max_float = st.number_input("Max Float (M)", value=300, step=50)
-    
-    st.subheader("Risk Management")
-    account_size = st.number_input("Account Size ($)", value=1000)
-    risk_percent = st.slider("Max Risk % per Trade", 1.0, 10.0, 5.0)
-    
-    st.divider()
-    st.button("💾 Save Current Filters", use_container_width=True)
+    max_float_m = st.number_input("Max Float (M)", value=300, step=50)
 
-# ==================== MAIN AREA ====================
-col_table, col_details = st.columns([3.5, 2])
+    st.header("Risk Management")
+    account_size = st.number_input("Account Size ($)", value=1000)
+    risk_percent = st.slider("Risk % per Trade", 1.0, 10.0, 5.0)
+
+    st.divider()
+    if st.button("💾 Save Filters", use_container_width=True):
+        st.success("Filters saved (demo)")
+
+# Main Layout
+col_table, col_details = st.columns([3.5, 2.2])
 
 with col_table:
-    st.subheader("Live Momentum Scanner")
-    
+    st.subheader("📊 Live Momentum Scanner")
+    st.caption("Auto-discovers plays based on your filters — no manual input needed")
+
     if st.button("🔄 Run Live Scan", type="primary", use_container_width=True):
         with st.spinner("Scanning market with Massive.io..."):
             df = get_live_gainers(min_change=gap_min, min_volume=min_volume)
-            
+
             if not df.empty:
-                # Color coding for % Change
-                def color_change(val):
-                    color = 'background-color: #0e4a2e' if val > 0 else 'background-color: #4a1d1d'
-                    return color
+                # Color coding
+                def highlight_change(val):
+                    if val > 0:
+                        return 'background-color: #0e4a2e; color: white'
+                    return 'background-color: #4a1d1d; color: white'
                 
-                styled_df = df.style.applymap(color_change, subset=['% Change'])
+                styled = df.style.applymap(highlight_change, subset=['% Change'])
                 
-                st.dataframe(
-                    styled_df,
-                    use_container_width=True,
-                    hide_index=True,
-                    height=600
-                )
-                st.success(f"Found {len(df)} momentum plays")
+                st.dataframe(styled, use_container_width=True, hide_index=True, height=650)
+                st.success(f"✅ Found {len(df)} plays matching your criteria")
             else:
-                st.warning("No plays found matching your filters. Try lowering Gap Min %.")
+                st.warning("No plays found. Try lowering Gap Min % or Volume.")
 
 with col_details:
-    st.subheader("Selected Ticker")
-    ticker_input = st.text_input("Enter Ticker", value="GME").upper().strip()
+    st.subheader("Selected Ticker Analysis")
     
-    if st.button("Load Analysis", use_container_width=True):
-        st.info(f"📊 Loading full analysis for **{ticker_input}**...")
-        # Placeholder for real chart
-        fig = go.Figure()
-        fig.update_layout(
-            title=f"{ticker_input} - Daily Chart with Supply/Demand Zones",
-            height=450,
-            template="plotly_dark"
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        
-        st.write("**Suggested Risk Setup**")
-        st.write(f"Account: ${account_size} | Risk: {risk_percent}% → Position Size: ~${int(account_size * risk_percent/100)}")
+    # Auto-update when row is clicked (Streamlit limitation - we'll improve this)
+    ticker = st.text_input("Or enter manually", value="").upper().strip()
+    
+    if st.button("Load Chart + Zones", use_container_width=True):
+        if ticker:
+            st.info(f"📈 Loading {ticker} with Supply/Demand Zones...")
+            fig = go.Figure()
+            fig.update_layout(title=f"{ticker} - Daily Chart", height=480, template="plotly_dark")
+            st.plotly_chart(fig, use_container_width=True)
 
-# Bottom section
+# Bottom Alerts
 st.divider()
-st.subheader("🛎️ Alerts & Recent Activity")
-st.info("No alerts yet — run a scan to populate.")
+st.subheader("🛎️ Alerts & Log")
+st.info("Run scans above to generate alerts. Real-time alerts coming soon.")
 
-st.caption("💡 Tip: Click 'Run Live Scan' regularly. We're building toward full IBKR-level power.")
+st.caption("💡 Pro Tip: Refresh the page or click Run Live Scan often during market hours.")
