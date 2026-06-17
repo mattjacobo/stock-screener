@@ -2,24 +2,22 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
-# Import all scanners
+# Import scanners
 from scanners.massive_scanner import get_live_gainers as massive_scanner
 from scanners.yfinance_scanner import get_live_gainers as yfinance_scanner
-from scanners.finviz_scanner import get_live_gainers as finviz_scanner
+from scanners.tradingview_scanner import get_live_gainers as tradingview_scanner
 
 st.set_page_config(page_title="Stock Screener", layout="wide")
 
 st.title("🚀 Stock Screener - Momentum Play Detector")
-st.caption("Modular Multi-Source Scanner | Finding ANY stock in the market")
+st.caption("Multi-Source Market Scanner | Finding ANY stock that matches criteria")
 
-# =============================================
-# SIDEBAR
-# =============================================
+# Sidebar
 with st.sidebar:
     st.header("Scanner Source")
     scanner_choice = st.radio(
         "Choose Data Source",
-        ["Finviz (Best Free Market Scan)", "yFinance (Reliable)", "Massive.io (Paid)"],
+        ["TradingView (Best Free Market Scan)", "yFinance", "Massive.io (Paid)"],
         index=0
     )
     
@@ -32,19 +30,17 @@ with st.sidebar:
     account_size = st.number_input("Account Size ($)", value=1000)
     risk_percent = st.slider("Risk % per Trade", 1.0, 10.0, 5.0)
 
-# =============================================
-# MAIN LAYOUT
-# =============================================
+# Main Layout
 col_table, col_details = st.columns([3.5, 2.2])
 
 with col_table:
     st.subheader("📊 Live Momentum Scanner")
-    st.caption(f"Using: **{scanner_choice}** | Auto-discovers plays across the market")
+    st.caption(f"Using: **{scanner_choice}**")
 
     if st.button("🔄 Run Live Scan", type="primary", use_container_width=True):
-        with st.spinner(f"Scanning market with {scanner_choice}..."):
-            if "Finviz" in scanner_choice:
-                df = finviz_scanner(min_change=gap_min, min_volume=min_volume)
+        with st.spinner(f"Scanning entire market with {scanner_choice}..."):
+            if "TradingView" in scanner_choice:
+                df = tradingview_scanner(min_change=gap_min, min_volume=min_volume)
             elif "yFinance" in scanner_choice:
                 df = yfinance_scanner(min_change=gap_min, min_volume=min_volume)
             else:
@@ -56,19 +52,18 @@ with col_table:
                 df_display["% Change"] = df_display["% Change"].apply(lambda x: f"+{x:.2f}%")
                 
                 st.dataframe(df_display, use_container_width=True, hide_index=True, height=650)
-                st.success(f"✅ Found {len(df)} plays matching your criteria")
+                st.success(f"✅ Found {len(df)} plays")
             else:
-                st.warning("No plays found. Try lowering Gap Min % or Min Volume.")
+                st.warning("No plays found. Try lowering filters.")
 
 with col_details:
     st.subheader("Selected Ticker Analysis")
-    ticker = st.text_input("Ticker Symbol", value="").upper().strip()
-    
+    ticker = st.text_input("Ticker Symbol", "").upper().strip()
     if st.button("Load Chart + Zones", use_container_width=True) and ticker:
-        st.info(f"📈 Loading {ticker} with Supply/Demand Zones...")
+        st.info(f"Loading {ticker}...")
         fig = go.Figure()
         fig.update_layout(title=f"{ticker} - Daily Chart", height=480, template="plotly_dark")
         st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
-st.info("💡 Finviz currently gives the broadest free market coverage. Upgrade Massive for real-time power.")
+st.info("💡 TradingView currently provides the best free market-wide scanning.")
