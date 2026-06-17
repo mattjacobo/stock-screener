@@ -3,4 +3,4 @@ pandas
 plotly
 massive
 yfinance
-finvizfinance==0.9.8
+tradingview-screener
